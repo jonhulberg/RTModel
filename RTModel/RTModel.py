@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from tqdm import tqdm
 import shutil
+from icgs.icgsrtm import ICGS
 
 
 class RTModel:
@@ -415,6 +416,18 @@ class RTModel:
             print('\033[30;43m'+e.stderr+'\033[m')
             print('\033[30;41m! Program stopped here!\033[m')
             self.done = True
+
+
+    def config_ICGS(self,grid_dictionary,Tol=0.01,RelTol=0.001,ICGS_modelcode=None,overwrite=False):
+        self.grid_dictionary = grid_dictionary
+        self.Tol = Tol
+        self.RelTol = RelTol
+        self.overwrite = overwrite
+        self.ICGS_modelcode = ICGS_modelcode
+
+    def ICGS(self):
+        print('- Launching: Initial Condition Grid Search')
+
             
     def Finalizer(self):
         print('- Launching: Finalizer')
