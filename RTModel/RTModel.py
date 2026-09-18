@@ -45,6 +45,7 @@ class RTModel:
         print('Number of processors: {}'.format(self.nprocessors))
         self.config_Reader()
         self.config_InitCond()
+        self.config_ICGS()
         self.config_LevMar()
         self.config_ModelSelector()
         self.satellitedir = '.'
@@ -418,7 +419,7 @@ class RTModel:
             self.done = True
 
 
-    def config_ICGS(self,grid_dictionary,Tol=0.01,RelTol=0.001,ICGS_modelcode=None,overwrite=False):
+    def config_ICGS(self,grid_dictionary={},Tol=0.01,RelTol=0.001,ICGS_modelcode=None,overwrite=False):
         self.grid_dictionary = grid_dictionary
         self.Tol = Tol
         self.RelTol = RelTol
@@ -426,9 +427,13 @@ class RTModel:
         self.ICGS_modelcode = ICGS_modelcode
 
     def ICGS(self):
-        print('- Launching: Initial Condition Grid Search')
+        #If config_ICGS was given a model code, then run. Otherwise skip.
+        if self.ICGS_modelcode is not None:
+            print('- Launching: Initial Condition Grid Search')
+            initial_condition_grid_search = ICGS(eventname=self.eventname,model_type = self.ICGS_modelcode,satellitedir=self.satellitedir,
+            Tol = self.Tol,RelTol = self.RelTol,grid_dictionary=self.grid_dictionary, overwrite = self.overwrite)
+            print(f'- Finished Initial Condition Grid Search for {self.ICGS_modelcode}!')
 
-            
     def Finalizer(self):
         print('- Launching: Finalizer')
         print('  Making final assessment for this event')
@@ -485,8 +490,13 @@ class RTModel:
                 print("- Analysis of " + self.eventname + " successfully completed!")
                 print("o " + time.asctime())
                 self.done = True
-            # Launch LevMar for next class
+            # Launch first ICGS and then LevMar for next class
             elif phase%2 == 1:
+                # If right model code for ICGS, run ICGS before LevMar fits
+                #if no ICGS_modelcode or doesn't match, nothing happens.
+                if self.ICGS_modelcode == self.modelcodes[phase//2-1]:
+                    self.ICGS()
+                #Now Levmar
                 if(self.InitCond_modelcategories == None or self.modelcodes[phase//2-1] in self.InitCond_modelcategories):
                     self.launch_fits(self.modelcodes[phase//2-1]) 
                     print("o " + time.asctime())

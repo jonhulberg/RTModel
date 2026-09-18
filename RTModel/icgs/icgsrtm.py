@@ -1,13 +1,13 @@
 import VBMicrolensing
 import os
 import glob
-import sys
-import numpy as np
-import math
-import pandas as pd
-from tqdm import tqdm
+# import sys
+# import numpy as np
+# import math
+# import pandas as pd
+# from tqdm import tqdm
 from joblib import Parallel, delayed
-from helpers import *
+from icgs_helpers import *
 
 def minimize_linear_pars(y, err, x):
     """
@@ -25,7 +25,7 @@ def minimize_linear_pars(y, err, x):
 
 class ICGS:
     def __init__(self, eventname,model_type = '',
-             parameters = [], satellitedir = '.', Tol = 0.01,RelTol=0.001, ncores = 1,grid_dictionary = {},overwrite=False):
+              satellitedir = '.', Tol = 0.01,RelTol=0.001, ncores = 1,grid_dictionary = {},overwrite=False):
 
         self.ncores = ncores
         self.nfil = 0
@@ -33,7 +33,6 @@ class ICGS:
         self.LCToFit = None
         self.satellites = [0]
         self.satellitedir = satellitedir
-        self.parameters = parameters
         self.eventname = eventname
         self.model_type = model_type
         self.grid_dictionary = grid_dictionary
