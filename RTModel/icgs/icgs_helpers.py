@@ -4,10 +4,10 @@ import glob
 
 # modelcodes = ['PS', 'PX', 'BS', 'BO', 'LS', 'LX', 'LO', 'LK', 'TS', 'TX']
 class FindFixedParameters:
-    def __init__(self,eventname,modnumber,nfilt,grid_dictionary):
+    def __init__(self,eventname,modnumber,nfil,grid_dictionary):
         self.eventname = eventname
         self.modnumber = modnumber
-        self.nfilt = nfilt
+        self.nfil = nfil
         self.modelcodes =  ['PS', 'PX', 'BS', 'BO', 'LS', 'LX', 'LO', 'LK', 'TS', 'TX','TO']
         self.model_code = self.modelcodes[self.modnumber]
         self.grid_dictionary = grid_dictionary
@@ -19,19 +19,18 @@ class FindFixedParameters:
         if self.model_code not in predecessor_model_map.keys:
             raise ValueError(f"No predecessor model defined for {self.model_code}")
         run_map = {
-        'PS': self.PS_InitConds,
-        'PX': self.PX_InitConds,
-        'BS': self.BS_InitConds,
-        'BO': self.BO_InitConds,
-        'LS': self.LS_InitConds,
-        'LX': self.LX_InitConds,
-        'LO': self.LO_InitConds,
-        'LK': self.LK_InitConds,
-        'TS': self.TS_InitConds,
-        'TX': self.TX_InitConds,
-        'TO': self.TO_InitConds
+        'PS': self.get_PS,
+        'PX': self.get_PX,
+        'BS': self.get_BS,
+        'BO': self.get_BO,
+        'LS': self.get_LS,
+        'LX': self.get_LX,
+        'LO': self.get_LO,
+        'LK': self.get_LK,
+        'TS': self.get_TS,
+        'TX': self.get_TX,
+        'TO': self.get_TO
         }
-
         run_map[predecessor_model_map[self.model_code]]()
 
     def get_PS(self):
@@ -41,11 +40,21 @@ class FindFixedParameters:
             modelfile = model_list[i]
             with open(modelfile) as f:
                 line = f.readline()
-                line = np.array(map(float,line.split(' ')))[[0,1,2,3,2*self.nfilt+4]]
+                line = np.array(map(float,line.split(' ')))[[0, 1, 2, 3, 2 * self.nfil + 4]]
                 model_parameters.append(line)
 
+        # find best model parameters for RTModel PS fits
         model_parameters = pd.DataFrame(model_parameters, columns = ['u0','tE','t0','rho','chi2'])
         model_parameters = model_parameters.sortby('chi2')
+        best_model = model_parameters.iloc[0,:]
+
+        #replace  empty lists in LS grid dictionary with PS parameters
+        for key in self.grid_dictionary:
+            if len(self.grid_dictionary[key]) == 0:
+                self.grid_dictionary[key] = [best_model.loc[0,key]]
+
+
+
 
 
     def get_PX(self):

@@ -3,6 +3,7 @@ import subprocess
 import os
 import sys
 import glob
+import json
 import time
 from pathlib import Path
 from tqdm import tqdm
@@ -419,20 +420,29 @@ class RTModel:
             self.done = True
 
 
-    def config_ICGS(self,grid_dictionary={},Tol=0.01,RelTol=0.001,ICGS_modelcode=None,overwrite=False):
-        self.grid_dictionary = grid_dictionary
+    def config_ICGS(self,grid_dictionary={},grid_file_path=None,Tol=0.01,RelTol=0.001,overwrite=False):
+        if grid_file_path is not None:
+            with open(grid_file_path) as f:
+                self.grid_dictionary = json.load(fp=f)
+        else:
+            if grid_dictionary is not None:
+                self.grid_dictionary = grid_dictionary
+            else: raise ValueError('No grid dictionary provided!')
+
+        self.ICGS_modelcode = self.grid_dictionary['model_code']
         self.Tol = Tol
         self.RelTol = RelTol
         self.overwrite = overwrite
-        self.ICGS_modelcode = ICGS_modelcode
+
 
     def ICGS(self):
         #If config_ICGS was given a model code, then run. Otherwise skip.
         if self.ICGS_modelcode is not None:
             print('- Launching: Initial Condition Grid Search')
-            initial_condition_grid_search = ICGS(eventname=self.eventname,model_type = self.ICGS_modelcode,satellitedir=self.satellitedir,
-            Tol = self.Tol,RelTol = self.RelTol,grid_dictionary=self.grid_dictionary, overwrite = self.overwrite)
+            initial_condition_grid_search = ICGS(eventname=self.eventname,satellitedir=self.satellitedir,
+            Tol = self.Tol,RelTol = self.RelTol,ncores=self.nprocessors,grid_dictionary=self.grid_dictionary, overwrite = self.overwrite)
             print(f'- Finished Initial Condition Grid Search for {self.ICGS_modelcode}!')
+
 
     def Finalizer(self):
         print('- Launching: Finalizer')

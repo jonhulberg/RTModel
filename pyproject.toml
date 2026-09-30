@@ -21,10 +21,12 @@ classifiers = [
 ]
 dependencies = [
     "numpy",
+    "pandas",
     "pytest",
     "matplotlib", 
     "tqdm",
     "tabulate",
+    "joblib",
     "VBMicrolensing>=5.0"
 ]
 

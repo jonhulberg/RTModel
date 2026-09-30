@@ -8,6 +8,7 @@ import glob
 # from tqdm import tqdm
 from joblib import Parallel, delayed
 from icgs_helpers import *
+import json
 
 def minimize_linear_pars(y, err, x):
     """
@@ -24,7 +25,7 @@ def minimize_linear_pars(y, err, x):
 
 
 class ICGS:
-    def __init__(self, eventname,model_type = '',
+    def __init__(self, eventname,
               satellitedir = '.', Tol = 0.01,RelTol=0.001, ncores = 1,grid_dictionary = {},overwrite=False):
 
         self.ncores = ncores
@@ -34,7 +35,7 @@ class ICGS:
         self.satellites = [0]
         self.satellitedir = satellitedir
         self.eventname = eventname
-        self.model_type = model_type
+        self.model_type = self.grid_dictionary['model_code']
         self.grid_dictionary = grid_dictionary
         self.Tol = Tol
         self.RelTol = RelTol
@@ -110,7 +111,7 @@ class ICGS:
 
         self.lightcurves = []
         for i in range(self.nfil):
-            lc = self.LCToFit[self.LCtoFit['filter']==i].values
+            lc = self.LCToFit[self.LCToFit['filter']==i].values
             lc_list = []
             for j in range(1,8):
                 lc_list.append([lc[:,j]])
@@ -243,14 +244,23 @@ class ICGS:
         self.scan_list = [] # list of indices for parameters that will be looped over
         iterable_parameters_list = [] # list of parameter grids that get looped over
         parameters_list = self.modelcodes[model_index] #(self.grid_dictionary.keys())
+        ### if any of the grid parameter arrays are empty, fill them from predecessor model (PS -> LS ...)
+        for key in self.grid_dictionary:
+            if key != 'model_code' and len(self.grid_dictionary['key']) == 0:
+                predecessor_model = FindFixedParameters(self.eventname, self.modnumber, self.nfil, self.grid_dictionary)
+                self.grid_dictionary = predecessor_model.grid_dictionary
+                break
+
+        # now set up
         parameter_index = 0
         self.n_gridpoints=1
         for key in self.grid_dictionary:
-            self.n_gridpoints*=(self.grid_dictionary[key]) #to get number of grid models.
-            if len(self.grid_dictionary[key]>1):
-                self.scan_list.append(parameter_index)
-                iterable_parameters_list.append(self.grid_dictionary[key])
-            parameter_index +=1
+            if key!='model_code':
+                self.n_gridpoints*=len(self.grid_dictionary[key]) #to get number of grid models.
+                if len(self.grid_dictionary[key]>1):
+                    self.scan_list.append(parameter_index)
+                    iterable_parameters_list.append(self.grid_dictionary[key])
+                parameter_index +=1
         grid_tuple = np.meshgrid(*iterable_parameters_list)
         self.grid_array = np.zeros((self.n_gridpoints,len(self.scan_list)))
         for i in range(len(self.scan_list)):
