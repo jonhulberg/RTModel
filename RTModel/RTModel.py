@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from tqdm import tqdm
 import shutil
-from icgs.icgsrtm import ICGS
+from .icgs.icgsrtm import ICGS
 
 
 class RTModel:
@@ -443,16 +443,17 @@ class RTModel:
             self.done = True
 
 
-    def config_ICGS(self,grid_dictionary={},grid_file_path=None,Tol=0.01,RelTol=0.001,overwrite=False):
+    def config_ICGS(self,grid_dictionary=None,grid_file_path=None,Tol=0.01,RelTol=0.001,overwrite=False):
         if grid_file_path is not None:
             with open(grid_file_path) as f:
                 self.grid_dictionary = json.load(fp=f)
+                self.ICGS_modelcode = self.grid_dictionary['modelcode']
         else:
             if grid_dictionary is not None:
                 self.grid_dictionary = grid_dictionary
-            else: raise ValueError('No grid dictionary provided!')
-
-        self.ICGS_modelcode = self.grid_dictionary['model_code']
+                self.ICGS_modelcode = self.grid_dictionary['modelcode']
+            else:
+                self.ICGS_modelcode = None
         self.Tol = Tol
         self.RelTol = RelTol
         self.overwrite = overwrite
@@ -462,8 +463,9 @@ class RTModel:
         #If config_ICGS was given a model code, then run. Otherwise skip.
         if self.ICGS_modelcode is not None:
             print('- Launching: Initial Condition Grid Search')
-            initial_condition_grid_search = ICGS(eventname=self.eventname,satellitedir=self.satellitedir,
+            self.icgs_object = ICGS(eventname=self.eventname,satellitedir=self.satellitedir,
             Tol = self.Tol,RelTol = self.RelTol,ncores=self.nprocessors,grid_dictionary=self.grid_dictionary, overwrite = self.overwrite)
+            self.icgs_object.run()
             print(f'- Finished Initial Condition Grid Search for {self.ICGS_modelcode}!')
 
 

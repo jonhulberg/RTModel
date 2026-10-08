@@ -7,7 +7,7 @@ import glob
 # import pandas as pd
 # from tqdm import tqdm
 from joblib import Parallel, delayed
-from icgs_helpers import *
+from .icgs_helpers import *
 import json
 
 def minimize_linear_pars(y, err, x):
@@ -35,8 +35,9 @@ class ICGS:
         self.satellites = [0]
         self.satellitedir = satellitedir
         self.eventname = eventname
-        self.model_type = self.grid_dictionary['model_code']
+
         self.grid_dictionary = grid_dictionary
+        self.model_type = self.grid_dictionary['modelcode']
         self.Tol = Tol
         self.RelTol = RelTol
         self.reference_chi2 = 0 # temp TODO add this!
@@ -45,7 +46,7 @@ class ICGS:
 
         # General information on models
         self.modelcodes= ['PS','PX','BS','BO','LS','LX','LO','LK','TS','TX']
-        self.modnumber = np.where(self.model_type == self.modelcodes)[0]
+        self.modnumber =  self.modelcodes.index(self.model_type)
         self.npars=[4,6,7,12,7,9,12,14,10,12]
         self.logposs=[[0,1,3],
                  [1,3],
@@ -79,8 +80,8 @@ class ICGS:
         self.mass_luminosity_exponent = 4.0
         self.mass_radius_exponent = 0.9
         self.lens_mass_luminosity_exponent = 4.0
-
         # run
+    def run(self):
         self.readdata()
         self.readoptions()
         self.setup_grid()
@@ -97,11 +98,13 @@ class ICGS:
         else:
             os.chdir(self.eventname)
 
-            columns = ['filter', 'HJD', 'Flux', 'errFlux', 'satellite', 'Dec' 'errDec' 'RA' 'errRA']
+            columns = ['filter', 'HJD', 'Flux', 'errFlux', 'satellite', 'Dec', 'errDec', 'RA', 'errRA']
             self.LCToFit = pd.read_csv('LCToFit.txt',skiprows=1, names = columns, sep='\s+')
+            #print(self.LCToFit)
             self.npoints=self.LCToFit.shape[0]
             self.nfil = np.unique(self.LCToFit['filter']).shape[0]
             self.satellites = np.unique(self.LCToFit['filter'])
+            #print(self.satellites) # test remove later TODO
             if self.LCToFit.iloc[0,-1] > 0:
                 self.astrometric = True
                 self.nlinpars = 4
@@ -240,13 +243,13 @@ class ICGS:
     def setup_grid(self):
         if self.model_type not in self.modelcodes:
             raise ValueError("Specified model does not exist")
-        model_index = np.where(self.model_type == self.modelcodes)[0]
+        model_index = self.modelcodes.index(self.model_type)
         self.scan_list = [] # list of indices for parameters that will be looped over
         iterable_parameters_list = [] # list of parameter grids that get looped over
         parameters_list = self.modelcodes[model_index] #(self.grid_dictionary.keys())
         ### if any of the grid parameter arrays are empty, fill them from predecessor model (PS -> LS ...)
         for key in self.grid_dictionary:
-            if key != 'model_code' and len(self.grid_dictionary['key']) == 0:
+            if key != 'modelcode' and len(self.grid_dictionary[key]) == 0:
                 predecessor_model = FindFixedParameters(self.eventname, self.modnumber, self.nfil, self.grid_dictionary)
                 self.grid_dictionary = predecessor_model.grid_dictionary
                 break
@@ -255,7 +258,7 @@ class ICGS:
         parameter_index = 0
         self.n_gridpoints=1
         for key in self.grid_dictionary:
-            if key!='model_code':
+            if key!='modelcode':
                 self.n_gridpoints*=len(self.grid_dictionary[key]) #to get number of grid models.
                 if len(self.grid_dictionary[key]>1):
                     self.scan_list.append(parameter_index)

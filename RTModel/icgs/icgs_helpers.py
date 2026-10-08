@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import glob
+import math
 
 # modelcodes = ['PS', 'PX', 'BS', 'BO', 'LS', 'LX', 'LO', 'LK', 'TS', 'TX']
 class FindFixedParameters:
@@ -16,7 +17,7 @@ class FindFixedParameters:
                                  'LX':'PX',
         }
 
-        if self.model_code not in predecessor_model_map.keys:
+        if self.model_code not in list(predecessor_model_map):
             raise ValueError(f"No predecessor model defined for {self.model_code}")
         run_map = {
         'PS': self.get_PS,
@@ -45,7 +46,8 @@ class FindFixedParameters:
 
         # find best model parameters for RTModel PS fits
         model_parameters = pd.DataFrame(model_parameters, columns = ['u0','tE','t0','rho','chi2'])
-        model_parameters = model_parameters.sortby('chi2')
+        model_parameters = model_parameters.sort_values('chi2')
+        print(model_parameters)
         best_model = model_parameters.iloc[0,:]
 
         #replace  empty lists in LS grid dictionary with PS parameters
@@ -280,3 +282,50 @@ class SelectInitConds:
         raise ValueError(f"No ICGS strategy defined for model class TX")
     def TO_InitConds(self):
         raise ValueError(f"No ICGS strategy defined for model class TO")
+
+
+class GridCreator:
+    def __init__(self,modelcode=None,save_path=None):
+        self.modelcode = modelcode
+        self.save_path=save_path
+        self.modelcodes = ['PS', 'PX', 'BS', 'BO', 'LS', 'LX', 'LO', 'LK', 'TS', 'TX', 'TO']
+        self.parnames = [['u0','tE','t0','rho'],
+                    ['u0','tE','t0','rho','piN','piE'],
+                    ['tE','FR','u01','u02','t0','t02','rho'],
+                    ['tE','FR','u01','u02','t0','t02','rho','piN','piE','gamma1','gamma2','gammaz'],
+                    ['s','q','u0','alpha','rho','tE','t0'],
+                    ['s','q','u0','alpha','rho','tE','t0','piN','piE'],
+                    ['s','q','u0','alpha','rho','tE','t0','piN','piE','gamma1','gamma2','gammaz'],
+                    ['s','q','u0','alpha','rho','tE','t0','piN','piE','gamma1','gamma2','gammaz','sz_s','a_s3d'],
+                    ['s','q','u0','alpha','rho','tE','t0','s2','q2','beta'],
+                    ['s','q','u0','alpha','rho','tE','t0','s2','q2','beta','piN','piE']]
+
+    def create_grid(self):
+
+        #creates the grid dictionary objecr
+        while self.modelcode not in self.modelcodes:
+            self.model_code=input("Enter a valid model code")
+        if self.save_path is None:
+            self.save_path = input("Enter a name for the grid_file")
+
+        model_index = self.model_codes.index
+
+    def create_uniform_array(self,start,stop,npoints,log=False,base=None):
+        """
+        Uses numpy.linspace/logspace to create uniform array
+        Unlike in np.logspace, give the start/stop in linear space.
+        Endpoints are inclusive.
+        """
+        if log:
+            if base is None:
+                base=10
+            start = math.log(start,base=base)
+            start = math.log(start, base=base)
+            uniform_array = np.logspace(start=start,stop=stop,num=npoints,base=base)
+        else:
+            uniform_array = np.linspace(start=start,stop=stop, num=npoints)
+        return uniform_array
+
+
+
+
