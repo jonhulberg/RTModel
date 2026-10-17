@@ -58,20 +58,23 @@ class FindFixedParameters:
         self.grid_dictionary['chi2'] = best_model['chi2']
 
     def get_PX(self):
-        model_list = glob.glob(f"{self.eventname}/Models/PX*")
+        model_list = glob.glob(f"{self.eventname}/PreModels/PX*.txt")
         model_parameters = []
         for i in range(len(model_list)):
             modelfile = model_list[i]
             with open(modelfile) as f:
+                f.readline()
                 line = f.readline()
-                line = np.array(list(map(float, line.split(' '))))[[0, 1, 2, 3, 3 + 2 * self.nfil + 5]]
+                line = np.array(list(map(float, line.split(' '))))[[0, 1, 2, 3, 4, 5, 5 + 2 * self.nfil + 5]]
                 model_parameters.append(line)
 
         # find best model parameters for RTModel PS fits
-        model_parameters = pd.DataFrame(model_parameters, columns=['u0', 'tE', 't0', 'rho', 'piEN','piEE','chi2'])
-        model_parameters_plus_u0 =model_parameters[model_parameters['u0'] >=0].sort_values('chi2')
-        model_parameters_minus_u0 = model_parameters[model_parameters['u0'] < 0].sort_values('chi2')
+        model_parameters = pd.DataFrame(model_parameters, columns=['u0', 'tE', 't0', 'rho', 'piN','piE','chi2'])
+        model_parameters_plus_u0 =model_parameters[model_parameters['u0'] >=0].sort_values('chi2').reset_index(drop=True)
+        model_parameters_minus_u0 = model_parameters[model_parameters['u0'] < 0].sort_values('chi2').reset_index(drop=True)
         #print(model_parameters)
+        print(model_parameters_plus_u0)
+        print(model_parameters_minus_u0)
         u0_plus_best_model = model_parameters_plus_u0.iloc[0, :]
         u0_minus_best_model= model_parameters_minus_u0.iloc[0, :]
         #print(best_model.shape)
@@ -304,7 +307,30 @@ class SelectInitConds:
         print(best_grid_model_indices)
         self.best_grid_models = self.grid_output.iloc[best_grid_model_indices,:]
     def LX_InitConds(self):
-        raise ValueError(f"No ICGS strategy defined for model class LX")
+        # current strategy - run LS_InitConds for both +/-u0 models and merge the two sets of intial conds
+        #It looks a bit janky, but shuffling the values of self.grid_output and self.reference_chi2
+        #lets us do this pretty easily
+        grid_output_placeholder = self.grid_output.copy()
+        reference_chi2_array = self.reference_chi2.copy()
+
+        #first u0+
+        self.grid_output = grid_output_placeholder[grid_output_placeholder['u0']>=0]
+        self.reference_chi2 = reference_chi2_array[0]
+        #with the values for u0 >= 0 assigned to self.grid_output, we just call LS_InitConds
+        self.LS_InitConds()
+        u0_plus_best_grid_models = self.best_grid_models.copy()
+        # now u0-
+        self.grid_output = grid_output_placeholder[grid_output_placeholder['u0']<0]
+        self.reference_chi2 = reference_chi2_array[1]
+        #with the values for u0 <0 assigned to self.grid_output, we just call LS_InitConds
+        self.LS_InitConds()
+        u0_minus_best_grid_models = self.best_grid_models.copy()
+        #Merge u0 >/< 0 best models into one dataframe
+        self.best_grid_models = pd.concat([u0_plus_best_grid_models,u0_minus_best_grid_models],ignore_index=True)
+        #reset self.grid outputs and self.reference_chi2
+        self.grid_output = grid_output_placeholder.copy()
+        self.reference_chi2 = reference_chi2_array.copy()
+        #All done
     def LO_InitConds(self):
         raise ValueError(f"No ICGS strategy defined for model class LO")
     def LK_InitConds(self):

@@ -285,62 +285,132 @@ class ICGS:
     def setup_grid(self):
         if self.model_type not in self.modelcodes:
             raise ValueError("Specified model does not exist")
-
-
+        # If model has parallax, must do two grids.
         if (self.modnumber == 1 or self.modnumber == 3 or self.modnumber > 4):
             #if parallax model, extract the grid dictionaries for +/- u0
             u0_plus_grid_dictionary = self.grid_dictionary['u0_plus']
+            #u0_minus_grid_dictionary = self.grid_dictionary['u0_minus']
+            # Check to see if we must retrieve initial parameters from single lens predeccesor model.
+            for key in u0_plus_grid_dictionary:
+                if key != 'modelcode' and key != 'chi2' and len(u0_plus_grid_dictionary[key]) == 0:
+                    predecessor_model = FindFixedParameters(self.eventname, self.modnumber, self.nfil,
+                                                            self.grid_dictionary)
+                    self.grid_dictionary = predecessor_model.grid_dictionary
+                    break
+
+            u0_plus_grid_dictionary = self.grid_dictionary['u0_plus']
             u0_minus_grid_dictionary = self.grid_dictionary['u0_minus']
 
+            self.reference_chi2 = []
+            self.reference_chi2.append(u0_plus_grid_dictionary['chi2'])
+            self.reference_chi2.append(u0_minus_grid_dictionary['chi2'])
+            self.scan_list = [] # list of indices for parameters that will be looped over
+            u0_plus_iterable_parameters_list = [] # list of parameter grids that get looped over
+            ### if any of the grid parameter arrays are empty, fill them from predecessor model (PS -> LS ...)
+            parameter_index = 0
+            u0_plus_ngridpoints =  1
+            for key in u0_plus_grid_dictionary:
+                if key != 'modelcode' and key != 'chi2':
+                    u0_plus_ngridpoints *= len(u0_plus_grid_dictionary[key])  # to get number of grid models.
+                    if len(u0_plus_grid_dictionary[key]) > 1:
+                        self.scan_list.append(parameter_index)
+                        u0_plus_iterable_parameters_list.append(u0_plus_grid_dictionary[key])
+                    parameter_index += 1
+            u0_plus_grid_tuple = np.meshgrid(*u0_plus_iterable_parameters_list)
 
-        self.scan_list = [] # list of indices for parameters that will be looped over
-        iterable_parameters_list = [] # list of parameter grids that get looped over
-        ### if any of the grid parameter arrays are empty, fill them from predecessor model (PS -> LS ...)
-
-
-        for key in self.grid_dictionary:
-            if key != 'modelcode' and key != 'chi2' and len(self.grid_dictionary[key]) == 0:
-                predecessor_model = FindFixedParameters(self.eventname, self.modnumber, self.nfil, self.grid_dictionary)
-                self.grid_dictionary = predecessor_model.grid_dictionary
-                break
-        self.reference_chi2 = self.grid_dictionary['chi2']
-
-        # now set up
-        parameter_index = 0
-        self.n_gridpoints=1
-        for key in self.grid_dictionary:
-            if key!='modelcode' and key!='chi2':
-                self.n_gridpoints*=len(self.grid_dictionary[key]) #to get number of grid models.
-                if len(self.grid_dictionary[key])>1:
-                    self.scan_list.append(parameter_index)
-                    iterable_parameters_list.append(self.grid_dictionary[key])
-                parameter_index +=1
-        grid_tuple = np.meshgrid(*iterable_parameters_list)
-        self.grid_array = np.zeros((self.n_gridpoints,len(self.scan_list)))
-        for i in range(len(self.scan_list)):
-            self.grid_array[:,i] = grid_tuple[i].flatten()
+            u0_minus_iterable_parameters_list = []
+            parameter_index = 0
+            u0_minus_ngridpoints = 1
+            for key in u0_minus_grid_dictionary:
+                if key != 'modelcode' and key != 'chi2':
+                    u0_minus_ngridpoints *= len(u0_minus_grid_dictionary[key])  # to get number of grid models.
+                    if len(u0_minus_grid_dictionary[key]) > 1:
+                        u0_minus_iterable_parameters_list.append(u0_minus_grid_dictionary[key])
+                    parameter_index += 1
+            u0_minus_grid_tuple = np.meshgrid(*u0_minus_iterable_parameters_list)
+            self.n_gridpoints = u0_plus_ngridpoints + u0_minus_ngridpoints # number of grid points
+            u0_plus_grid_array = np.zeros((u0_plus_ngridpoints,len(self.scan_list)))
+            u0_minus_grid_array = np.zeros((u0_minus_ngridpoints, len(self.scan_list)))
+            for i in range(len(self.scan_list)):
+                #assign arrays from each grid tuple into single numpy array
+                u0_plus_grid_array[:,i] = u0_plus_grid_tuple[i].flatten()
+                u0_minus_grid_array[:, i] = u0_minus_grid_tuple[i].flatten()
+            self.grid_array = [u0_plus_grid_array,u0_minus_grid_array]
+        else:
+            #static model
+            for key in self.grid_dictionary:
+                if key != 'modelcode' and key != 'chi2' and len(self.grid_dictionary[key]) == 0:
+                    predecessor_model = FindFixedParameters(self.eventname, self.modnumber, self.nfil, self.grid_dictionary)
+                    self.grid_dictionary = predecessor_model.grid_dictionary
+                    break
+            self.reference_chi2 = self.grid_dictionary['chi2']
+            # now set up
+            self.scan_list = [] # list of indices for parameters that will be looped over
+            iterable_parameters_list = []
+            parameter_index = 0
+            self.n_gridpoints=1
+            for key in self.grid_dictionary:
+                if key!='modelcode' and key!='chi2':
+                    self.n_gridpoints*=len(self.grid_dictionary[key]) #to get number of grid models.
+                    if len(self.grid_dictionary[key])>1:
+                        self.scan_list.append(parameter_index)
+                        iterable_parameters_list.append(self.grid_dictionary[key])
+                    parameter_index +=1
+            grid_tuple = np.meshgrid(*iterable_parameters_list)
+            self.grid_array = np.zeros((self.n_gridpoints,len(self.scan_list)))
+            for i in range(len(self.scan_list)):
+                self.grid_array[:,i] = grid_tuple[i].flatten()
 
     def search_grid(self):
-        self.pars_template = [self.grid_dictionary[key][0] for key in self.parnames[self.modnumber]] # initialze a parameter array.
-        for i in self.logposs[self.modnumber]:
-            self.pars_template[i] = np.log(self.pars_template[i])
+        if (self.modnumber == 1 or self.modnumber == 3 or self.modnumber > 4):
+            self.grid_results = []
+            dict_keys = ['u0_plus','u0_minus']
+            for j in range(2):
+                grid_array_plx = self.grid_array[j]
+                self.pars_template = [self.grid_dictionary[dict_keys[j]][key][0] for key in
+                                      self.parnames[self.modnumber]]  # initialze a parameter array.
+                for i in self.logposs[self.modnumber]:
+                    self.pars_template[i] = np.log(self.pars_template[i])
 
-        parallel = Parallel(n_jobs=self.ncores,verbose=0)
-        #split into self.ncores subarrays for parallel calculation
+                parallel = Parallel(n_jobs=self.ncores, verbose=0)
+                # split into self.ncores subarrays for parallel calculation
 
-        # split the grid points uniformly between each process by assigning them to different arrays.
-        # prevents one process from being much slower by getting all of the difficult parameters.
-        indices = []
-        for i in range(self.ncores):
-            indices.append(np.arange(i, self.grid_array.shape[0], step=self.ncores))
+                # split the grid points uniformly between each process by assigning them to different arrays.
+                # prevents one process from being much slower by getting all of the difficult parameters.
+                indices = []
+                for i in range(self.ncores):
+                    indices.append(np.arange(i, grid_array_plx.shape[0], step=self.ncores))
+                # self.grid_results = self.calculate_lightcurve_wrapper(self.grid_array)
+                grid_results = parallel(
+                    delayed(self.calculate_lightcurve_wrapper)(grid_array_plx[indices[i]]) for i in range(self.ncores))
+                grid_results = np.concatenate(grid_results)
+                # del self.grid_array # just to save memory.
+                self.grid_results.append(grid_results)
+            self.grid_results = np.concatenate(self.grid_results)
+            column_names = self.parnames[self.modnumber] + ['chi2']
+            self.grid_results = pd.DataFrame(np.array(self.grid_results), columns=column_names)
 
-        #self.grid_results = self.calculate_lightcurve_wrapper(self.grid_array)
+        else:
+            self.pars_template = [self.grid_dictionary[key][0] for key in self.parnames[self.modnumber]] # initialze a parameter array.
+            for i in self.logposs[self.modnumber]:
+                self.pars_template[i] = np.log(self.pars_template[i])
 
-        self.grid_results = parallel(delayed(self.calculate_lightcurve_wrapper)(self.grid_array[indices[i]]) for i in range(self.ncores))
-        self.grid_results = np.concatenate(self.grid_results)
-        #del self.grid_array # just to save memory.
-        column_names = self.parnames[self.modnumber] +['chi2']
-        self.grid_results = pd.DataFrame(np.array(self.grid_results),columns=column_names)
+            parallel = Parallel(n_jobs=self.ncores,verbose=0)
+            #split into self.ncores subarrays for parallel calculation
+
+            # split the grid points uniformly between each process by assigning them to different arrays.
+            # prevents one process from being much slower by getting all of the difficult parameters.
+            indices = []
+            for i in range(self.ncores):
+                indices.append(np.arange(i, self.grid_array.shape[0], step=self.ncores))
+
+            #self.grid_results = self.calculate_lightcurve_wrapper(self.grid_array)
+
+            self.grid_results = parallel(delayed(self.calculate_lightcurve_wrapper)(self.grid_array[indices[i]]) for i in range(self.ncores))
+            self.grid_results = np.concatenate(self.grid_results)
+            #del self.grid_array # just to save memory.
+            column_names = self.parnames[self.modnumber] +['chi2']
+            self.grid_results = pd.DataFrame(np.array(self.grid_results),columns=column_names)
 
         # And that's the grid :)
 
