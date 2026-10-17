@@ -529,7 +529,7 @@ class RTModel:
             elif phase%2 == 1:
                 # If right model code for ICGS, run ICGS before LevMar fits
                 #if no ICGS_modelcode or doesn't match, nothing happens.
-                if self.ICGS_modelcode == self.modelcodes[phase//2-1]:
+                if (self.ICGS_modelcode == self.modelcodes[phase//2-1]) and (self.ICGS_modelcode in self.InitCond_modelcategories):
                     self.ICGS()
                 #Now Levmar
                 if(self.InitCond_modelcategories == None or self.modelcodes[phase//2-1] in self.InitCond_modelcategories):

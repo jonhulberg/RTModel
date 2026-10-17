@@ -41,7 +41,7 @@ class FindFixedParameters:
             modelfile = model_list[i]
             with open(modelfile) as f:
                 line = f.readline()
-                line = np.array(map(float,line.split(' ')))[[0, 1, 2, 3, 2 * self.nfil + 4]]
+                line = np.array(list(map(float,line.split(' '))))[[0, 1, 2, 3, 3 + 2 * self.nfil + 5]]
                 model_parameters.append(line)
 
         # find best model parameters for RTModel PS fits
@@ -49,18 +49,50 @@ class FindFixedParameters:
         model_parameters = model_parameters.sort_values('chi2')
         print(model_parameters)
         best_model = model_parameters.iloc[0,:]
+        print(best_model.shape)
 
         #replace  empty lists in LS grid dictionary with PS parameters
         for key in self.grid_dictionary:
             if len(self.grid_dictionary[key]) == 0:
-                self.grid_dictionary[key] = [best_model.loc[0,key]]
-
-
-
-
+                self.grid_dictionary[key] = [best_model[key]]
+        self.grid_dictionary['chi2'] = best_model['chi2']
 
     def get_PX(self):
-        raise ValueError(f"No strategy defined for model class PX")
+        model_list = glob.glob(f"{self.eventname}/Models/PX*")
+        model_parameters = []
+        for i in range(len(model_list)):
+            modelfile = model_list[i]
+            with open(modelfile) as f:
+                line = f.readline()
+                line = np.array(list(map(float, line.split(' '))))[[0, 1, 2, 3, 3 + 2 * self.nfil + 5]]
+                model_parameters.append(line)
+
+        # find best model parameters for RTModel PS fits
+        model_parameters = pd.DataFrame(model_parameters, columns=['u0', 'tE', 't0', 'rho', 'piEN','piEE','chi2'])
+        model_parameters_plus_u0 =model_parameters[model_parameters['u0'] >=0].sort_values('chi2')
+        model_parameters_minus_u0 = model_parameters[model_parameters['u0'] < 0].sort_values('chi2')
+        #print(model_parameters)
+        u0_plus_best_model = model_parameters_plus_u0.iloc[0, :]
+        u0_minus_best_model= model_parameters_minus_u0.iloc[0, :]
+        #print(best_model.shape)
+        u0_plus_grid_dictionary = self.grid_dictionary['u0_plus']
+        u0_minus_grid_dictionary = self.grid_dictionary['u0_minus']
+
+        # replace  empty lists in LX grid dictionary with PX parameters for best +/- u0 models
+        #+
+        for key in u0_plus_grid_dictionary:
+            if len(u0_plus_grid_dictionary[key]) == 0:
+                u0_plus_grid_dictionary[key] = [u0_plus_best_model[key]]
+        u0_plus_grid_dictionary['chi2'] = u0_plus_best_model['chi2']
+        #-
+        for key in u0_minus_grid_dictionary:
+            if len(u0_minus_grid_dictionary[key]) == 0:
+                u0_minus_grid_dictionary[key] = [u0_minus_best_model[key]]
+        u0_minus_grid_dictionary['chi2'] = u0_minus_best_model['chi2']
+        # assign to dictionary
+        self.grid_dictionary['u0_plus'] = u0_plus_grid_dictionary
+        self.grid_dictionary['u0_minus'] = u0_minus_grid_dictionary
+
     def get_BS(self):
         raise ValueError(f"No strategy defined for model class BS")
     def get_BO(self):
@@ -123,15 +155,14 @@ class SelectInitConds:
         In a way there are 4 unique mass ratios.
         2b. If >= 4 unique mass ratios, add best models with unique q,s until 20 initial conditions.
         """
-
-
-
         pspl_thresh = 0
         number_of_best_models_before_q_filter = 13
         number_of_final_models = 20
         number_of_minimum_unique_q = 4
         n_models = self.grid_output.shape[0]
-        delta_chi2 = self.reference_chi2 - self.grid_output[:,-1]
+        delta_chi2 = self.reference_chi2 - self.grid_output.loc[:,'chi2']
+
+        print(f'max delta_chi2 = {np.max(delta_chi2)}')
         self.grid_output['delta_chi2'] = delta_chi2
         q_values, s_values, alpha_values = self.grid_output.loc[:,'q'], self.grid_output.loc[:,'s'],self.grid_output.loc[:,'alpha']
         # Sort all models by chi2 (ascending)
@@ -269,7 +300,9 @@ class SelectInitConds:
                                     # print(f'Step 3b: {len(best_grid_model_indices)} initial conditions selected')
                                     delta_chi2_le_0_flag = 1
                                     break
-        self.best_grid_models = self.grid_output[best_grid_model_indices,:]
+
+        print(best_grid_model_indices)
+        self.best_grid_models = self.grid_output.iloc[best_grid_model_indices,:]
     def LX_InitConds(self):
         raise ValueError(f"No ICGS strategy defined for model class LX")
     def LO_InitConds(self):

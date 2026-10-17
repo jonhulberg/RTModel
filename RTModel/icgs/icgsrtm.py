@@ -1,14 +1,31 @@
 import VBMicrolensing
 import os
 import glob
+
+import tqdm
 # import sys
 # import numpy as np
 # import math
 # import pandas as pd
-# from tqdm import tqdm
+import tqdm
 from joblib import Parallel, delayed
 from .icgs_helpers import *
 import json
+
+
+# @delayed
+# @wrap_non_picklable_objects
+# def initialize_vbm(Tol, RelTol, turn_off_secondary_source,turn_off_secondary_lens,mass_luminosity_exponent,mass_radius_exponent,lens_mass_luminosity_exponent):
+#     vbm = VBMicrolensing.VBMicrolensing()
+#     vbm.Tol = Tol
+#     vbm.RelTol = RelTol
+#     vbm.SetMethod(VBMicrolensing.VBMicrolensing.Multipoly)
+#     vbm.turn_off_secondary_source = turn_off_secondary_source
+#     vbm.turn_off_secondary_lens = turn_off_secondary_lens
+#     vbm.mass_luminosity_exponent = mass_luminosity_exponent
+#     vbm.mass_radius_exponent = mass_radius_exponent
+#     vbm.lens_mass_luminosity_exponent = lens_mass_luminosity_exponent
+#     return vbm
 
 def minimize_linear_pars(y, err, x):
     """
@@ -45,7 +62,7 @@ class ICGS:
 
 
         # General information on models
-        self.modelcodes= ['PS','PX','BS','BO','LS','LX','LO','LK','TS','TX']
+        self.modelcodes= ['PS','PX','BS','BO','LS','LX','LO','LK','TS','TX','TO']
         self.modnumber =  self.modelcodes.index(self.model_type)
         self.npars=[4,6,7,12,7,9,12,14,10,12]
         self.logposs=[[0,1,3],
@@ -152,6 +169,8 @@ class ICGS:
                     elif(chunks[0] == 'lens_mass_luminosity_exponent'):
                         self.lens_mass_luminosity_exponent = float(chunks[2])
 
+    # @delayed
+    # @wrap_non_picklable_objects
     def initialize_vbm(self):
         vbm = VBMicrolensing.VBMicrolensing()
         vbm.Tol = self.Tol
@@ -162,12 +181,13 @@ class ICGS:
         vbm.mass_luminosity_exponent = self.mass_luminosity_exponent
         vbm.mass_radius_exponent = self.mass_radius_exponent
         vbm.lens_mass_luminosity_exponent = self.lens_mass_luminosity_exponent
-        return vbm
-    def lightcurve(self, vbm, times, pars):
-        results = []
         if(self.modnumber == 1 or self.modnumber == 3 or self.modnumber > 4):
             vbm.SetObjectCoordinates(glob.glob('Data/*.coordinates')[0],self.satellitedir)
             vbm.parallaxsystem = 1
+
+        return vbm
+    def lightcurve(self, vbm, times, pars):
+        results = []
         if(self.modnumber == 0):
             results = vbm.ESPLLightCurve(pars, times)
         elif(self.modnumber == 1):
@@ -183,7 +203,7 @@ class ICGS:
             else:
                 results = vbm.BinSourceExtLightCurveXallarap(pars, times)
         elif(self.modnumber == 4):
-            esults = vbm.BinaryLightCurve(pars, times)
+            results = vbm.BinaryLightCurve(pars, times)
         elif(self.modnumber == 5):
             if(self.astrometric):
                 results = vbm.BinaryAstroLightCurve(pars, times)
@@ -207,60 +227,91 @@ class ICGS:
             else:
                 results = vbm.TripleLightCurveParallax(pars, times)
         if not results:
+            print(f'Results: {results}')
             raise ValueError("Lightcurve not calculated!")
         return results
 
-    def get_chi2(self,flux):
-        residuals = (self.lightcurves[2] - flux)/self.lightcurves[3]
+    def get_chi2(self,flux, filter_num):
+        residuals = (self.lightcurves[filter_num][1][0] - flux)/self.lightcurves[filter_num][2][0]
         chi2 = np.sum(residuals**2)
         return chi2
 
     def calculate(self,vbm,pars):
         lightcurve_results = []
         lightcurve_chi2 = []
-
+        #print(pars)
         for i in range(len(self.satellites)):
-            vbm.satellite = self.satellites[i]
+            if (self.modnumber == 1 or self.modnumber == 3 or self.modnumber > 4):
+                vbm.satellite = self.satellites[i]
+                #print(f'sat: {vbm.satellite}')
             vbm.a1 = self.limbdarkenings[i]
-            times = self.lightcurves[i][1]
+            #print(f'a1: {vbm.a1}')
+            times = self.lightcurves[i][0][0]
             results = self.lightcurve(vbm,times,pars)
-            mul, lin = minimize_linear_pars(self.lightcurves[i][2],self.lightcurves[i][3],results[0])
-            flux = mul * results[0] + lin
+            mul, lin = minimize_linear_pars(self.lightcurves[i][1][0],self.lightcurves[i][2][0],results[0])
+            #print(mul,lin)
+            flux = mul * np.array(results[0]) + lin
             lightcurve_results.append(flux)
-            chi2 = self.get_chi2(flux)
+            chi2 = self.get_chi2(flux,filter_num=i)
             lightcurve_chi2.append(chi2)
+        #print('lc chi2',lightcurve_chi2)
         total_chi2 = np.sum(lightcurve_chi2)
+        #print('total chi2',total_chi2)
         return total_chi2
     ### TODO (possibly) return chi2 in each filter.
-
-    def calculate_lightcurve_wrapper(self,vbm,grid_pars):
+    # @delayed
+    # @wrap_non_picklable_objects
+    def calculate_lightcurve_wrapper(self,grid_pars):
+        vbm = self.initialize_vbm()
         pars = self.pars_template
-        for i in range(len(self.scan_list)):
-            pars[self.scan_list[i]] = grid_pars[i]
-        total_chi2  = self.calculate(vbm,pars)
-        return pars.append(total_chi2)
+        result_list = []
+
+        for grid_index in tqdm.trange(grid_pars.shape[0],colour='red'):
+            # assign grid parameters to pars
+            for i in range(len(self.scan_list)):
+                #check if they should be log. TODO put this outside of loop?
+                if i in self.logposs[self.modnumber]:
+                    pars[self.scan_list[i]] = np.log(grid_pars[grid_index, i])
+                else:
+                    pars[self.scan_list[i]] = grid_pars[grid_index, i]
+            total_chi2  = self.calculate(vbm,pars)
+            results = pars.copy()
+            #print(results)
+            results.append(total_chi2)
+            #print(total_chi2)
+            result_list.append(results)
+        return result_list
 
     def setup_grid(self):
         if self.model_type not in self.modelcodes:
             raise ValueError("Specified model does not exist")
-        model_index = self.modelcodes.index(self.model_type)
+
+
+        if (self.modnumber == 1 or self.modnumber == 3 or self.modnumber > 4):
+            #if parallax model, extract the grid dictionaries for +/- u0
+            u0_plus_grid_dictionary = self.grid_dictionary['u0_plus']
+            u0_minus_grid_dictionary = self.grid_dictionary['u0_minus']
+
+
         self.scan_list = [] # list of indices for parameters that will be looped over
         iterable_parameters_list = [] # list of parameter grids that get looped over
-        parameters_list = self.modelcodes[model_index] #(self.grid_dictionary.keys())
         ### if any of the grid parameter arrays are empty, fill them from predecessor model (PS -> LS ...)
+
+
         for key in self.grid_dictionary:
-            if key != 'modelcode' and len(self.grid_dictionary[key]) == 0:
+            if key != 'modelcode' and key != 'chi2' and len(self.grid_dictionary[key]) == 0:
                 predecessor_model = FindFixedParameters(self.eventname, self.modnumber, self.nfil, self.grid_dictionary)
                 self.grid_dictionary = predecessor_model.grid_dictionary
                 break
+        self.reference_chi2 = self.grid_dictionary['chi2']
 
         # now set up
         parameter_index = 0
         self.n_gridpoints=1
         for key in self.grid_dictionary:
-            if key!='modelcode':
+            if key!='modelcode' and key!='chi2':
                 self.n_gridpoints*=len(self.grid_dictionary[key]) #to get number of grid models.
-                if len(self.grid_dictionary[key]>1):
+                if len(self.grid_dictionary[key])>1:
                     self.scan_list.append(parameter_index)
                     iterable_parameters_list.append(self.grid_dictionary[key])
                 parameter_index +=1
@@ -270,21 +321,42 @@ class ICGS:
             self.grid_array[:,i] = grid_tuple[i].flatten()
 
     def search_grid(self):
-        self.pars_template = [self.grid_dictionary[key][0] for key in self.grid_dictionary] # initialze a parameter array.
-        VBM_list = [self.initialize_vbm() for i in range(self.ncores)]
+        self.pars_template = [self.grid_dictionary[key][0] for key in self.parnames[self.modnumber]] # initialze a parameter array.
+        for i in self.logposs[self.modnumber]:
+            self.pars_template[i] = np.log(self.pars_template[i])
+
         parallel = Parallel(n_jobs=self.ncores,verbose=0)
-        self.grid_results = parallel(delayed(self.calculate_lightcurve_wrapper)(VBM_list[i],self.grid_array[i,:]) for i in range(self.n_gridpoints))
-        del self.grid_array # just to save memory. Probably not needed.
-        self.grid_results = pd.DataFrame(np.array(self.grid_results),columns=self.parnames[self.modnumber])
+        #split into self.ncores subarrays for parallel calculation
+
+        # split the grid points uniformly between each process by assigning them to different arrays.
+        # prevents one process from being much slower by getting all of the difficult parameters.
+        indices = []
+        for i in range(self.ncores):
+            indices.append(np.arange(i, self.grid_array.shape[0], step=self.ncores))
+
+        #self.grid_results = self.calculate_lightcurve_wrapper(self.grid_array)
+
+        self.grid_results = parallel(delayed(self.calculate_lightcurve_wrapper)(self.grid_array[indices[i]]) for i in range(self.ncores))
+        self.grid_results = np.concatenate(self.grid_results)
+        #del self.grid_array # just to save memory.
+        column_names = self.parnames[self.modnumber] +['chi2']
+        self.grid_results = pd.DataFrame(np.array(self.grid_results),columns=column_names)
+
         # And that's the grid :)
 
     def create_initial_conditions(self):
         #['PS', 'PX', 'BS', 'BO', 'LS', 'LX', 'LO', 'LK', 'TS', 'TX']
         init_conds_selector = SelectInitConds(self.modnumber, self.grid_results,self.eventname,self.reference_chi2)
-        icgs_initial_conditions = init_conds_selector.best_grid_models
+        self.icgs_initial_conditions = init_conds_selector.best_grid_models
+
+        # take out of log space
+        for i in self.logposs[self.modnumber]:
+            self.icgs_initial_conditions.iloc[:,i] = np.exp(self.icgs_initial_conditions.iloc[:,i])
+
+
         os.mkdir(f"{self.eventname}/GridOutputs")
         self.grid_results.to_csv(f"{self.eventname}/GridOutputs/{self.model_type}ICGS.csv",index=None,)
-        icgs_initial_conditions.to_csv(f"{self.eventname}/GridOutputs/{self.model_type}ICGS_best_models.csv",index=None)
+        self.icgs_initial_conditions.to_csv(f"{self.eventname}/GridOutputs/{self.model_type}ICGS_best_models.csv",index=None)
 
         temppath = f'{self.eventname}/InitCond/InitCond{self.model_type}.txt.tmp'
         initpath = f'{self.eventname}/InitCond/InitCond{self.model_type}.txt'
@@ -295,21 +367,21 @@ class ICGS:
                     npeaks_nconds = oldinit.readline()
                     npeaks = int(npeaks_nconds.split(' ')[0])
                     #old_ninit = int(npeaks_nconds.split(' ')[1])
-                    npeaks_nconds = f'{npeaks} {icgs_initial_conditions.shape[0]}\n'
+                    npeaks_nconds = f'{npeaks} {self.icgs_initial_conditions.shape[0]}\n'
                     tempinit.write(npeaks_nconds)
                     # write peaks from old file
                     for n in range(npeaks):
                         peak = oldinit.readline()
                         tempinit.write(peak)
             # now write initial conditons to file
-            icgs_initial_conditions.iloc[:, 0:self.npars].to_csv(temppath, sep=' ', mode='a', header=False, index=False)
+            self.icgs_initial_conditions.iloc[:, 0:self.npars[self.modnumber]].to_csv(temppath, sep=' ', mode='a', header=False, index=False)
         else:
             with open(temppath, 'w') as tempinit:
                 with open(initpath, 'r') as oldinit:
                     npeaks_nconds = oldinit.readline()
                     npeaks = int(npeaks_nconds.split(' ')[0])
                     old_ninit = int(npeaks_nconds.split(' ')[1])
-                    npeaks_nconds = f'{npeaks} {old_ninit + icgs_initial_conditions.shape[0]}\n'
+                    npeaks_nconds = f'{npeaks} {old_ninit + self.icgs_initial_conditions.shape[0]}\n'
                     tempinit.write(npeaks_nconds)
                     # write peaks from old file
                     for n in range(npeaks):
@@ -319,7 +391,7 @@ class ICGS:
                         line = oldinit.readline()
                         tempinit.write(line)
                         # now write initial conditons to file
-            icgs_initial_conditions.iloc[:, 0:self.npars].to_csv(temppath, sep=' ', mode='a', header=False,
+            self.icgs_initial_conditions.iloc[:, 0:self.npars[self.modnumber]].to_csv(temppath, sep=' ', mode='a', header=False,
                                                                     index=False)
         os.remove(initpath)
         os.rename(temppath, initpath)
