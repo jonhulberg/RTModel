@@ -266,7 +266,7 @@ class ICGS:
         pars = self.pars_template
         result_list = []
 
-        for grid_index in tqdm.trange(grid_pars.shape[0],colour='red'):
+        for grid_index in range(grid_pars.shape[0]):
             # assign grid parameters to pars
             for i in range(len(self.scan_list)):
                 #check if they should be log. TODO put this outside of loop?
