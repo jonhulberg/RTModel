@@ -21,6 +21,9 @@ class LevMar {
 
 	char eventname[512], filename[30], filnum[10], outdir[30], satellitedir[256];
 	char modelcode[16];
+
+	bool use_planetary_caustic_coordinates;
+
 	int error;
 	int flagblending;
 	path exedir;

@@ -97,6 +97,7 @@ class ICGS:
         self.mass_luminosity_exponent = 4.0
         self.mass_radius_exponent = 0.9
         self.lens_mass_luminosity_exponent = 4.0
+        self.use_planetary_caustic_coordinates = False
         # run
     def run(self):
         self.readdata()
@@ -168,6 +169,8 @@ class ICGS:
                         self.mass_radius_exponent = float(chunks[2])
                     elif(chunks[0] == 'lens_mass_luminosity_exponent'):
                         self.lens_mass_luminosity_exponent = float(chunks[2])
+                    elif (chunks[0] == 'use_planetary_caustic_coordinates' and chunks[2] == 'True'):
+                        self.use_planetary_caustic_coordinates = True
 
     # @delayed
     # @wrap_non_picklable_objects
@@ -203,7 +206,10 @@ class ICGS:
             else:
                 results = vbm.BinSourceExtLightCurveXallarap(pars, times)
         elif(self.modnumber == 4):
-            results = vbm.BinaryLightCurve(pars, times)
+            if self.use_planetary_caustic_coordinates:
+                results = vbm.BinaryLightCurveW(pars, times)
+            else:
+                results = vbm.BinaryLightCurve(pars, times)
         elif(self.modnumber == 5):
             if(self.astrometric):
                 results = vbm.BinaryAstroLightCurve(pars, times)

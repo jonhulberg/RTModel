@@ -32,6 +32,7 @@ double mass_luminosity_exponent = 4.0; // Mass-luminosity exponent for the sourc
 double mass_radius_exponent = 0.9; // Mass-radius exponent for the sources
 double lens_mass_luminosity_exponent = 4.0; // Mass-luminosity exponent for the lenses
 bool stepchainsave = false;
+bool use_planetary_caustic_coordinates = false;// tell code to use BinaryLightCurveW
 
 std::vector<std::vector<std::string>> parnames = { {"u0","tE","t0","rho"},
 					{"u0","tE","t0","rho","piN","piE"},
@@ -175,7 +176,6 @@ LevMar::~LevMar() {
 void LevMar::ReadFiles(int argc, char* argv[]) {
 
 	try {
-
 		// Reading directory and event information
 
 		exedir = current_path();
@@ -667,6 +667,11 @@ void LevMar::ReadOptions(double* preleftlim, double* prerightlim, double* presig
 				if (strcmp(command, "stepchainsave") == 0 && strcmp(value, "True") == 0) {
 					stepchainsave = true;
 				}
+				if (strcmp(command, "use_planetary_caustic_coordinates") == 0 && strcmp(value, "True") == 0) {
+				// Jon's addition to switch to wide planetary caustic parameterization.
+				    use_planetary_caustic_coordinates = true;
+				}
+
 			}
 			fclose(f);
 		}
@@ -1323,7 +1328,11 @@ void LevMar::EvaluateModel(double* pr, int fl, int ips) {
 		}
 		break;
 	case 4:
-		VBM->BinaryLightCurve(pr, tfl, fbfl, y1fl, y2fl, sizes[fl]);
+	    if (use_planetary_caustic_coordinates) {
+	        VBM->BinaryLightCurveW(pr, tfl, fbfl, y1fl, y2fl, sizes[fl]);
+	    }
+		else {VBM->BinaryLightCurve(pr, tfl, fbfl, y1fl, y2fl, sizes[fl]);
+		}
 		break;
 	case 5:
 		if (astrometric) {

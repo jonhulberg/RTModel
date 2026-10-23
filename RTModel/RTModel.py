@@ -228,7 +228,8 @@ class RTModel:
 
     def config_LevMar(self, nfits = 6, offsetdegeneracy = 2, timelimit = 600.0, maxsteps = 50, bumperpower = 2.0, \
                       mass_luminosity_exponent = None, mass_radius_exponent = None, lens_mass_luminosity_exponent = None, \
-                     turn_off_secondary_source = False, turn_off_secondary_lens = False, block_tertiary_lens = False, stepchainsave=False):
+                     turn_off_secondary_source = False, turn_off_secondary_lens = False, block_tertiary_lens = False, stepchainsave=False,  \
+                      use_planetary_caustic_coordinates=False):
         self.LevMar_nfits = nfits # Number of models to be calculated from the same initial condition using the bumper method
         self.LevMar_offsetdegeneracy = offsetdegeneracy # Number of models to be fit after applying offset degeneracy to best model found so far
         self.LevMar_maxsteps = maxsteps # Maximum number of steps in each fit
@@ -241,6 +242,7 @@ class RTModel:
         self.LevMar_turn_off_secondary_source = turn_off_secondary_source # Option for dark secondary sources
         self.LevMar_block_tertiary_lens = block_tertiary_lens # Option for blocked tertiary lens
         self.LevMar_stepchainsave = stepchainsave # If True, step chains are saved
+        self.LevMar_use_planetary_caustic_coordinates = use_planetary_caustic_coordinates
     
     def LevMar(self,strmodel, parameters_file = None, parameters = None):
         if(not os.path.exists(self.eventname + '/' + self.inidir)):
@@ -260,6 +262,7 @@ class RTModel:
             f.write('maxsteps = ' + str(self.LevMar_maxsteps) + '\n')
             f.write('timelimit = ' + str(self.LevMar_timelimit) + '\n')
             f.write('bumperpower = ' + str(self.LevMar_bumperpower) + '\n')
+            f.write('use_planetary_caustic_coordinates = ' + str(self.LevMar_use_planetary_caustic_coordinates) + '\n')
             if(self.LevMar_mass_luminosity_exponent != None):
                 f.write('mass_luminosity_exponent = ' + str(self.LevMar_mass_luminosity_exponent) + '\n')
             if(self.LevMar_mass_radius_exponent != None):
