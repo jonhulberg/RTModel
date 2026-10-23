@@ -163,6 +163,8 @@ class plotmodel:
                         self.vbm.mass_radius_exponent = float(chunks[2])
                     elif(chunks[0] == 'lens_mass_luminosity_exponent'):
                         self.vbm.lens_mass_luminosity_exponent = float(chunks[2])
+                    elif (chunks[0] == 'use_planetary_caustic_coordinates' and chunks[2] == 'True'):
+                        self.use_planetary_caustic_coordinates = True
                         
     # Reading model parameters
     def readparameters(self):
@@ -296,7 +298,11 @@ class plotmodel:
             else:
                 self.results = self.vbm.BinSourceExtLightCurveXallarap(self.pars,self.t)
         elif(self.modnumber == 4):
-            self.results = self.vbm.BinaryLightCurve(self.pars,self.t)
+            if self.use_planetary_caustic_coordinates:
+                print('Using BinaryLightCurveW')
+                self.results = self.vbm.BinaryLightCurveW(self.pars, self.t)
+            else:
+                self.results = self.vbm.BinaryLightCurve(self.pars, self.t)
         elif(self.modnumber == 5):
             if(self.astrometric):
                 self.results = self.vbm.BinaryAstroLightCurve(self.pars,self.t)

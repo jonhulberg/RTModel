@@ -276,11 +276,12 @@ class ICGS:
             # assign grid parameters to pars
             for i in range(len(self.scan_list)):
                 #check if they should be log. TODO put this outside of loop?
-                if i in self.logposs[self.modnumber]:
+                if self.scan_list[i] in self.logposs[self.modnumber]:
                     pars[self.scan_list[i]] = np.log(grid_pars[grid_index, i])
                 else:
                     pars[self.scan_list[i]] = grid_pars[grid_index, i]
             total_chi2  = self.calculate(vbm,pars)
+            if grid_index == 0: print(total_chi2)
             results = pars.copy()
             #print(results)
             results.append(total_chi2)
@@ -366,6 +367,7 @@ class ICGS:
             self.grid_array = np.zeros((self.n_gridpoints,len(self.scan_list)))
             for i in range(len(self.scan_list)):
                 self.grid_array[:,i] = grid_tuple[i].flatten()
+            print(f"Scanning {self.n_gridpoints} models")
 
     def search_grid(self):
         if (self.modnumber == 1 or self.modnumber == 3 or self.modnumber > 4):

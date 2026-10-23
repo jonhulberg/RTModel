@@ -314,6 +314,7 @@ class RTModel:
                 f.write('block_tertiary_lens = True\n')
             if(self.LevMar_stepchainsave):
                 f.write('stepchainsave = True\n')
+            f.write('use_planetary_caustic_coordinates = ' + str(self.LevMar_use_planetary_caustic_coordinates) + '\n')
         stringfits = {'PS' : '- Single-lens-Single-source fits',
                       'PX' : '- Single-lens-Single-source fits with parallax',
                       'BS' : '- Single-lens-Binary-source fits',
