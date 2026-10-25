@@ -120,7 +120,7 @@ class ICGS:
             #print(self.LCToFit)
             self.npoints=self.LCToFit.shape[0]
             self.nfil = np.unique(self.LCToFit['filter']).shape[0]
-            self.satellites = np.unique(self.LCToFit['filter'])
+            self.satellites = np.unique(self.LCToFit['satellite'])
             #print(self.satellites) # test remove later TODO
             if self.LCToFit.iloc[0,-1] > 0:
                 self.astrometric = True
@@ -268,9 +268,10 @@ class ICGS:
 
         for grid_index in range(grid_pars.shape[0]):
             # assign grid parameters to pars
+
             for i in range(len(self.scan_list)):
                 #check if they should be log. TODO put this outside of loop?
-                if i in self.logposs[self.modnumber]:
+                if self.scan_list[i] in self.logposs[self.modnumber]:
                     pars[self.scan_list[i]] = np.log(grid_pars[grid_index, i])
                 else:
                     pars[self.scan_list[i]] = grid_pars[grid_index, i]
