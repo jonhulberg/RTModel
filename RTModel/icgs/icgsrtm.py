@@ -370,9 +370,11 @@ class ICGS:
                 grid_array_plx = self.grid_array[j]
                 self.pars_template = [self.grid_dictionary[dict_keys[j]][key][0] for key in
                                       self.parnames[self.modnumber]]  # initialze a parameter array.
+
+
                 for i in self.logposs[self.modnumber]:
                     self.pars_template[i] = np.log(self.pars_template[i])
-
+                print(f"ICGS pars for {dict_keys[j]}: {self.pars_template}")
                 parallel = Parallel(n_jobs=self.ncores, verbose=0)
                 # split into self.ncores subarrays for parallel calculation
 
@@ -417,6 +419,8 @@ class ICGS:
 
     def create_initial_conditions(self):
         #['PS', 'PX', 'BS', 'BO', 'LS', 'LX', 'LO', 'LK', 'TS', 'TX']
+        os.mkdir(f"{self.eventname}/GridOutputs")
+        self.grid_results.to_csv(f"{self.eventname}/GridOutputs/{self.model_type}ICGS.csv",index=None,)
         init_conds_selector = SelectInitConds(self.modnumber, self.grid_results,self.eventname,self.reference_chi2)
         self.icgs_initial_conditions = init_conds_selector.best_grid_models
 
