@@ -339,7 +339,7 @@ class ICGS:
                 u0_minus_grid_array[:, i] = u0_minus_grid_tuple[i].flatten()
             self.grid_array = [u0_plus_grid_array,u0_minus_grid_array]
             for i in range(len(self.grid_array)):
-                np.save(f'./grid{i}.txt',X=self.grid_array[i])
+                np.savetxt(f'./grid{i}.txt',X=self.grid_array[i])
         else:
             #static model
             for key in self.grid_dictionary:
