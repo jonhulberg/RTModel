@@ -299,7 +299,7 @@ class ICGS:
                     self.grid_dictionary = predecessor_model.grid_dictionary
                     break
             with open('./gridfile.json','w') as f:
-                json.dump(self.grid_dictionary)
+                json.dump(self.grid_dictionary,fp=f)
             u0_plus_grid_dictionary = self.grid_dictionary['u0_plus']
             u0_minus_grid_dictionary = self.grid_dictionary['u0_minus']
 
