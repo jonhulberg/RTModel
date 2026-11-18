@@ -425,15 +425,13 @@ class ICGS:
         os.mkdir(f"{self.eventname}/GridOutputs")
         self.grid_results.to_csv(f"{self.eventname}/GridOutputs/{self.model_type}ICGS.csv",index=None,)
         init_conds_selector = SelectInitConds(self.modnumber, self.grid_results,self.eventname,self.reference_chi2)
+        print(self.reference_chi2)
         self.icgs_initial_conditions = init_conds_selector.best_grid_models
 
         # take out of log space
         for i in self.logposs[self.modnumber]:
             self.icgs_initial_conditions.iloc[:,i] = np.exp(self.icgs_initial_conditions.iloc[:,i])
 
-
-        os.mkdir(f"{self.eventname}/GridOutputs")
-        self.grid_results.to_csv(f"{self.eventname}/GridOutputs/{self.model_type}ICGS.csv",index=None,)
         self.icgs_initial_conditions.to_csv(f"{self.eventname}/GridOutputs/{self.model_type}ICGS_best_models.csv",index=None)
 
         temppath = f'{self.eventname}/InitCond/InitCond{self.model_type}.txt.tmp'
