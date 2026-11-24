@@ -311,17 +311,17 @@ class SelectInitConds:
         #It looks a bit janky, but shuffling the values of self.grid_output and self.reference_chi2
         #lets us do this pretty easily
         grid_output_placeholder = self.grid_output.copy(deep=True)
-        reference_chi2_array = self.reference_chi2.copy(deep=True)
+        reference_chi2_array = self.reference_chi2.copy()
 
         #first u0+
-        self.grid_output = grid_output_placeholder[grid_output_placeholder['u0']>=0]
+        self.grid_output = grid_output_placeholder[grid_output_placeholder['u0']>=0].reset_index(drop=True)
         self.reference_chi2 = reference_chi2_array[0]
         print(self.reference_chi2)
         #with the values for u0 >= 0 assigned to self.grid_output, we just call LS_InitConds
         self.LS_InitConds()
         u0_plus_best_grid_models = self.best_grid_models.copy()
         # now u0-
-        self.grid_output = grid_output_placeholder[grid_output_placeholder['u0']<0]
+        self.grid_output = grid_output_placeholder[grid_output_placeholder['u0']<0].reset_index(drop=True)
         self.reference_chi2 = reference_chi2_array[1]
         print(self.reference_chi2)
         #with the values for u0 <0 assigned to self.grid_output, we just call LS_InitConds
