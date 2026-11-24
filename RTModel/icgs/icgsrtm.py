@@ -123,7 +123,7 @@ class ICGS:
             self.filters = self.LCToFit['filter'].unique()
             self.nfil = self.filters.shape[0]
             self.satellites = self.LCToFit['satellite'].unique()
-            print(self.satellites)
+            #print(self.satellites)
             #print(self.satellites) # test remove later TODO
             if self.LCToFit.iloc[0,-1] > 0:
                 self.astrometric = True
@@ -139,7 +139,7 @@ class ICGS:
             for j in range(1,8):
                 lc_list.append([lc[:,j]])
             self.lightcurves.append(lc_list)
-        print(self.filters)
+        #print(self.filters)
 
         # self.lightcurves = [ [np.array([dl[0] for dl in d]),np.array([dl[1] for dl in d]),np.array([dl[2] for dl in d]) , np.array([dl[4] for dl in d]),np.array([dl[5] for dl in d]),np.array([dl[6] for dl in d]),np.array([dl[7] for dl in d]),d[0][3]] for d in data]
         with open('FilterToData.txt') as f:
@@ -246,7 +246,7 @@ class ICGS:
         for i in range(len(self.filters)):
             if (self.modnumber == 1 or self.modnumber == 3 or self.modnumber > 4):
                 vbm.satellite = self.satellites[i]
-                print(f'sat: {vbm.satellite}')
+                #print(f'sat: {vbm.satellite}')
 
             if self.no_ld:
                 vbm.a1 = 0

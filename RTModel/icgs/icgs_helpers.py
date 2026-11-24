@@ -320,6 +320,8 @@ class SelectInitConds:
         #with the values for u0 >= 0 assigned to self.grid_output, we just call LS_InitConds
         self.LS_InitConds()
         u0_plus_best_grid_models = self.best_grid_models.copy()
+        if u0_plus_best_grid_models.shape == 0:
+            print("Warning: No models from u0_plus grid improved the chi2. Fits not launched.")
         # now u0-
         self.grid_output = grid_output_placeholder[grid_output_placeholder['u0']<0].reset_index(drop=True)
         self.reference_chi2 = reference_chi2_array[1]
@@ -327,6 +329,8 @@ class SelectInitConds:
         #with the values for u0 <0 assigned to self.grid_output, we just call LS_InitConds
         self.LS_InitConds()
         u0_minus_best_grid_models = self.best_grid_models.copy()
+        if u0_minus_best_grid_models.shape == 0:
+            print("Warning: No models from u0_minus grid improved the chi2. Fits not launched.")
         #Merge u0 >/< 0 best models into one dataframe
         self.best_grid_models = pd.concat([u0_plus_best_grid_models,u0_minus_best_grid_models],ignore_index=True)
         #reset self.grid outputs and self.reference_chi2
