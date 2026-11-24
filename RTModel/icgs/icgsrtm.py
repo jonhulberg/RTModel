@@ -43,7 +43,7 @@ def minimize_linear_pars(y, err, x):
 
 class ICGS:
     def __init__(self, eventname,
-              satellitedir = '.', Tol = 0.01,RelTol=0.001, ncores = 1,grid_dictionary = {},overwrite=False):
+              satellitedir = '.', Tol = 0.01,RelTol=0.001, ncores = 1,grid_dictionary = {},no_ld = False,overwrite=False):
 
         self.ncores = ncores
         self.nfil = 0
@@ -58,6 +58,7 @@ class ICGS:
         self.Tol = Tol
         self.RelTol = RelTol
         self.reference_chi2 = 0 # temp TODO add this!
+        self.no_ld = no_ld
         self.overwrite = overwrite
 
 
@@ -119,8 +120,10 @@ class ICGS:
             self.LCToFit = pd.read_csv('LCToFit.txt',skiprows=1, names = columns, sep='\s+')
             #print(self.LCToFit)
             self.npoints=self.LCToFit.shape[0]
-            self.nfil = np.unique(self.LCToFit['filter']).shape[0]
-            self.satellites = np.unique(self.LCToFit['satellite'])
+            self.filters = self.LCToFit['filter'].unique()
+            self.nfil = self.filters.shape[0]
+            self.satellites = self.LCToFit['satellite'].unique()
+            print(self.satellites)
             #print(self.satellites) # test remove later TODO
             if self.LCToFit.iloc[0,-1] > 0:
                 self.astrometric = True
@@ -130,13 +133,13 @@ class ICGS:
                     self.parnames[i] += self.astroparnames
 
         self.lightcurves = []
-        for i in range(self.nfil):
-            lc = self.LCToFit[self.LCToFit['filter']==i].values
+        for filt in self.filters:
+            lc = self.LCToFit[self.LCToFit['filter']==filt].values
             lc_list = []
             for j in range(1,8):
                 lc_list.append([lc[:,j]])
             self.lightcurves.append(lc_list)
-
+        print(self.filters)
 
         # self.lightcurves = [ [np.array([dl[0] for dl in d]),np.array([dl[1] for dl in d]),np.array([dl[2] for dl in d]) , np.array([dl[4] for dl in d]),np.array([dl[5] for dl in d]),np.array([dl[6] for dl in d]),np.array([dl[7] for dl in d]),d[0][3]] for d in data]
         with open('FilterToData.txt') as f:
@@ -240,11 +243,16 @@ class ICGS:
         lightcurve_results = []
         lightcurve_chi2 = []
         #print(pars)
-        for i in range(len(self.satellites)):
+        for i in range(len(self.filters)):
             if (self.modnumber == 1 or self.modnumber == 3 or self.modnumber > 4):
                 vbm.satellite = self.satellites[i]
-                #print(f'sat: {vbm.satellite}')
-            vbm.a1 = self.limbdarkenings[i]
+                print(f'sat: {vbm.satellite}')
+
+            if self.no_ld:
+                vbm.a1 = 0
+            else:
+                vbm.a1 = self.limbdarkenings[i]
+
             #print(f'a1: {vbm.a1}')
             times = self.lightcurves[i][0][0]
             results = self.lightcurve(vbm,times,pars)
