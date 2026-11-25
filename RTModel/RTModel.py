@@ -443,7 +443,7 @@ class RTModel:
             self.done = True
 
 
-    def config_ICGS(self,grid_dictionary=None,grid_file_path=None,Tol=0.01,RelTol=0.001,overwrite=False):
+    def config_ICGS(self,grid_dictionary=None,grid_file_path=None,Tol=0.01,RelTol=0.001,overwrite=False,cleanup_grid=False):
         if grid_file_path is not None:
             with open(grid_file_path) as f:
                 self.grid_dictionary = json.load(fp=f)
@@ -457,6 +457,7 @@ class RTModel:
         self.Tol = Tol
         self.RelTol = RelTol
         self.overwrite = overwrite
+        self.cleanup_grid = cleanup_grid
 
 
     def ICGS(self):
@@ -467,6 +468,8 @@ class RTModel:
             Tol = self.Tol,RelTol = self.RelTol,ncores=self.nprocessors,grid_dictionary=self.grid_dictionary, overwrite = self.overwrite)
             self.icgs_object.run()
             print(f'- Finished Initial Condition Grid Search for {self.ICGS_modelcode}!')
+            if self.cleanup_grid:
+                self.cleanup_grid_search_models()
 
 
     def Finalizer(self):
