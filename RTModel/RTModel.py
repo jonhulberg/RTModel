@@ -522,6 +522,7 @@ class RTModel:
                 if(cleanup):
                     print('- Cleaning up preliminary models')
                     self.cleanup_preliminary_models()
+                    self.cleanup_grid_search_models()
                 print("- Analysis of " + self.eventname + " successfully completed!")
                 print("o " + time.asctime())
                 self.done = True
@@ -546,7 +547,11 @@ class RTModel:
     def cleanup_preliminary_models(self):
         if(os.path.exists('self.eventname/PreModels')):
             shutil.rmtree('self.eventname/PreModels')
-            
+    def cleanup_grid_search_models(self):
+        if(os.path.exists('self.eventname/GridOutputs')):
+            shutil.rmtree('self.eventname/GridOutputs')
+
+
     def archive_run(self, destination = None):
         olddir = os.getcwd()
         os.chdir(self.eventname)

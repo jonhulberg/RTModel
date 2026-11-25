@@ -1,17 +1,11 @@
-import VBMicrolensing
-import os
-import glob
 
-import tqdm
-# import sys
-# import numpy as np
-# import math
-# import pandas as pd
-import tqdm
+import os
+import numpy as np
+import pandas as pd
+import VBMicrolensing
 from joblib import Parallel, delayed
 from .icgs_helpers import *
 import json
-
 
 # @delayed
 # @wrap_non_picklable_objects
@@ -65,29 +59,33 @@ class ICGS:
         # General information on models
         self.modelcodes= ['PS','PX','BS','BO','LS','LX','LO','LK','TS','TX','TO']
         self.modnumber =  self.modelcodes.index(self.model_type)
-        self.npars=[4,6,7,12,7,9,12,14,10,12]
-        self.logposs=[[0,1,3],
-                 [1,3],
-                 [0,1,6],
-                 [0,1,6],
-                 [0,1,4,5],
-                 [0,1,4,5],
-                 [0,1,4,5],
-                 [0,1,4,5],
-                 [0,1,4,5,7,8],
-                 [0,1,4,5,7,8]]
-        self.parnames = [['u0','tE','t0','rho'],
-                    ['u0','tE','t0','rho','piN','piE'],
-                    ['tE','FR','u01','u02','t0','t02','rho'],
-                    ['tE','FR','u01','u02','t0','t02','rho','piN','piE','gamma1','gamma2','gammaz'],
-                    ['s','q','u0','alpha','rho','tE','t0'],
-                    ['s','q','u0','alpha','rho','tE','t0','piN','piE'],
-                    ['s','q','u0','alpha','rho','tE','t0','piN','piE','gamma1','gamma2','gammaz'],
-                    ['s','q','u0','alpha','rho','tE','t0','piN','piE','gamma1','gamma2','gammaz','sz_s','a_s3d'],
-                    ['s','q','u0','alpha','rho','tE','t0','s2','q2','beta'],
-                    ['s','q','u0','alpha','rho','tE','t0','s2','q2','beta','piN','piE']]
-        self.astroparnames = ['muS_Dec','muS_RA','piS','thetaE']
+        self.npars = [4, 6, 7, 12, 7, 9, 12, 14, 10, 12, 15]
+        self.logposs = [[0, 1, 3],
+                        [1, 3],
+                        [0, 1, 6],
+                        [0, 1, 6],
+                        [0, 1, 4, 5],
+                        [0, 1, 4, 5],
+                        [0, 1, 4, 5],
+                        [0, 1, 4, 5],
+                        [0, 1, 4, 5, 7, 8],
+                        [0, 1, 4, 5, 7, 8],
+                        [0, 1, 4, 5, 7, 8]]
+        self.parnames = [['u0', 'tE', 't0', 'rho'],
+                         ['u0', 'tE', 't0', 'rho', 'piN', 'piE'],
+                         ['tE', 'FR', 'u01', 'u02', 't0', 't02', 'rho'],
+                         ['tE', 'FR', 'u01', 'u02', 't0', 't02', 'rho', 'piN', 'piE', 'gamma1', 'gamma2', 'gammaz'],
+                         ['s', 'q', 'u0', 'alpha', 'rho', 'tE', 't0'],
+                         ['s', 'q', 'u0', 'alpha', 'rho', 'tE', 't0', 'piN', 'piE'],
+                         ['s', 'q', 'u0', 'alpha', 'rho', 'tE', 't0', 'piN', 'piE', 'gamma1', 'gamma2', 'gammaz'],
+                         ['s', 'q', 'u0', 'alpha', 'rho', 'tE', 't0', 'piN', 'piE', 'gamma1', 'gamma2', 'gammaz',
+                          'sz_s', 'a_s3d'],
+                         ['s', 'q', 'u0', 'alpha', 'rho', 'tE', 't0', 's2', 'q2', 'beta'],
+                         ['s', 'q', 'u0', 'alpha', 'rho', 'tE', 't0', 's2', 'q2', 'beta', 'piN', 'piE'],
+                         ['s', 'q', 'u0', 'alpha', 'rho', 'tE', 't0', 's2', 'q2', 'beta', 'piN', 'piE', 'gamma1',
+                          'gamma2', 'gammaz']]
 
+        self.astroparnames = ['muS_Dec','muS_RA','piS','thetaE']
         self.astrometric = False
         self.nlinpars = 2
         self.parstring = ''
