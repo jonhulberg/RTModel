@@ -304,7 +304,7 @@ class SelectInitConds:
                                     delta_chi2_le_0_flag = 1
                                     break
 
-        print(best_grid_model_indices)
+        #print(best_grid_model_indices)
         self.best_grid_models = self.grid_output.iloc[best_grid_model_indices,:]
     def LX_InitConds(self):
         # current strategy - run LS_InitConds for both +/-u0 models and merge the two sets of intial conds

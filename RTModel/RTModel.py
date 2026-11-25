@@ -548,11 +548,11 @@ class RTModel:
                 phase += 1
 
     def cleanup_preliminary_models(self):
-        if(os.path.exists('self.eventname/PreModels')):
-            shutil.rmtree('self.eventname/PreModels')
+        if(os.path.exists(f'{self.eventname}/PreModels')):
+            shutil.rmtree(f'{self.eventname}/PreModels')
     def cleanup_grid_search_models(self):
-        if(os.path.exists('self.eventname/GridOutputs')):
-            shutil.rmtree('self.eventname/GridOutputs')
+        if(os.path.exists(f'{self.eventname}/GridOutputs')):
+            shutil.rmtree(f'{self.eventname}/GridOutputs')
 
 
     def archive_run(self, destination = None):
