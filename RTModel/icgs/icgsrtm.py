@@ -6,6 +6,7 @@ import VBMicrolensing
 from joblib import Parallel, delayed
 from .icgs_helpers import *
 import json
+import tqdm
 
 # @delayed
 # @wrap_non_picklable_objects
@@ -267,26 +268,40 @@ class ICGS:
     ### TODO (possibly) return chi2 in each filter.
     # @delayed
     # @wrap_non_picklable_objects
-    def calculate_lightcurve_wrapper(self,grid_pars):
+    def calculate_lightcurve_wrapper(self,grid_pars,position):
         vbm = self.initialize_vbm()
         pars = self.pars_template
         result_list = []
-
-        for grid_index in range(grid_pars.shape[0]):
-            # assign grid parameters to pars
-
-            for i in range(len(self.scan_list)):
-                #check if they should be log. TODO put this outside of loop?
-                if self.scan_list[i] in self.logposs[self.modnumber]:
-                    pars[self.scan_list[i]] = np.log(grid_pars[grid_index, i])
-                else:
-                    pars[self.scan_list[i]] = grid_pars[grid_index, i]
-            total_chi2  = self.calculate(vbm,pars)
-            results = pars.copy()
-            #print(results)
-            results.append(total_chi2)
-            #print(total_chi2)
-            result_list.append(results)
+        if position == 0:
+            for grid_index in tqdm.trange(grid_pars.shape[0],mininterval=10,miniters=0,colour='red'):
+                # assign grid parameters to pars
+                for i in range(len(self.scan_list)):
+                    #check if they should be log. TODO put this outside of loop?
+                    if self.scan_list[i] in self.logposs[self.modnumber]:
+                        pars[self.scan_list[i]] = np.log(grid_pars[grid_index, i])
+                    else:
+                        pars[self.scan_list[i]] = grid_pars[grid_index, i]
+                total_chi2  = self.calculate(vbm,pars)
+                results = pars.copy()
+                #print(results)
+                results.append(total_chi2)
+                #print(total_chi2)
+                result_list.append(results)
+        else:
+            for grid_index in range(grid_pars.shape[0]):
+                # assign grid parameters to pars
+                for i in range(len(self.scan_list)):
+                    #check if they should be log. TODO put this outside of loop?
+                    if self.scan_list[i] in self.logposs[self.modnumber]:
+                        pars[self.scan_list[i]] = np.log(grid_pars[grid_index, i])
+                    else:
+                        pars[self.scan_list[i]] = grid_pars[grid_index, i]
+                total_chi2  = self.calculate(vbm,pars)
+                results = pars.copy()
+                #print(results)
+                results.append(total_chi2)
+                #print(total_chi2)
+                result_list.append(results)
         return result_list
 
     def setup_grid(self):
@@ -344,8 +359,8 @@ class ICGS:
                 u0_plus_grid_array[:,i] = u0_plus_grid_tuple[i].flatten()
                 u0_minus_grid_array[:, i] = u0_minus_grid_tuple[i].flatten()
             self.grid_array = [u0_plus_grid_array,u0_minus_grid_array]
-            for i in range(len(self.grid_array)):
-                np.savetxt(f'./grid{i}.txt',X=self.grid_array[i])
+            # for i in range(len(self.grid_array)):
+            #     np.savetxt(f'./grid{i}.txt',X=self.grid_array[i])
         else:
             #static model
             for key in self.grid_dictionary:
@@ -376,6 +391,7 @@ class ICGS:
             self.grid_results = []
             dict_keys = ['u0_plus','u0_minus']
             for j in range(2):
+                print(f'Starting ICGS for {dict_keys[j]} grid.')
                 grid_array_plx = self.grid_array[j]
                 self.pars_template = [self.grid_dictionary[dict_keys[j]][key][0] for key in
                                       self.parnames[self.modnumber]]  # initialze a parameter array.
@@ -383,7 +399,7 @@ class ICGS:
 
                 for i in self.logposs[self.modnumber]:
                     self.pars_template[i] = np.log(self.pars_template[i])
-                print(f"ICGS pars for {dict_keys[j]}: {self.pars_template}")
+                #print(f"ICGS pars for {dict_keys[j]}: {self.pars_template}")
                 parallel = Parallel(n_jobs=self.ncores, verbose=0)
                 # split into self.ncores subarrays for parallel calculation
 
@@ -394,7 +410,7 @@ class ICGS:
                     indices.append(np.arange(i, grid_array_plx.shape[0], step=self.ncores))
                 # self.grid_results = self.calculate_lightcurve_wrapper(self.grid_array)
                 grid_results = parallel(
-                    delayed(self.calculate_lightcurve_wrapper)(grid_array_plx[indices[i]]) for i in range(self.ncores))
+                    delayed(self.calculate_lightcurve_wrapper)(grid_array_plx[indices[i]],i) for i in range(self.ncores))
                 grid_results = np.concatenate(grid_results)
                 # del self.grid_array # just to save memory.
                 self.grid_results.append(grid_results)
@@ -403,6 +419,7 @@ class ICGS:
             self.grid_results = pd.DataFrame(np.array(self.grid_results), columns=column_names)
 
         else:
+            print('Starting ICGS')
             self.pars_template = [self.grid_dictionary[key][0] for key in self.parnames[self.modnumber]] # initialze a parameter array.
             for i in self.logposs[self.modnumber]:
                 self.pars_template[i] = np.log(self.pars_template[i])
@@ -418,7 +435,7 @@ class ICGS:
 
             #self.grid_results = self.calculate_lightcurve_wrapper(self.grid_array)
 
-            self.grid_results = parallel(delayed(self.calculate_lightcurve_wrapper)(self.grid_array[indices[i]]) for i in range(self.ncores))
+            self.grid_results = parallel(delayed(self.calculate_lightcurve_wrapper)(self.grid_array[indices[i]],i) for i in range(self.ncores))
             self.grid_results = np.concatenate(self.grid_results)
             #del self.grid_array # just to save memory.
             column_names = self.parnames[self.modnumber] +['chi2']

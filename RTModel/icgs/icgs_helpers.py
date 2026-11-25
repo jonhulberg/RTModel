@@ -47,9 +47,9 @@ class FindFixedParameters:
         # find best model parameters for RTModel PS fits
         model_parameters = pd.DataFrame(model_parameters, columns = ['u0','tE','t0','rho','chi2'])
         model_parameters = model_parameters.sort_values('chi2')
-        print(model_parameters)
+        # print(model_parameters)
         best_model = model_parameters.iloc[0,:]
-        print(best_model.shape)
+        # print(best_model.shape)
 
         #replace  empty lists in LS grid dictionary with PS parameters
         for key in self.grid_dictionary:
@@ -73,8 +73,8 @@ class FindFixedParameters:
         model_parameters_plus_u0 =model_parameters[model_parameters['u0'] >=0].sort_values('chi2').reset_index(drop=True)
         model_parameters_minus_u0 = model_parameters[model_parameters['u0'] < 0].sort_values('chi2').reset_index(drop=True)
         #print(model_parameters)
-        print(model_parameters_plus_u0)
-        print(model_parameters_minus_u0)
+        # print(model_parameters_plus_u0)
+        # print(model_parameters_minus_u0)
         u0_plus_best_model = model_parameters_plus_u0.iloc[0, :]
         u0_minus_best_model= model_parameters_minus_u0.iloc[0, :]
         #print(best_model.shape)
